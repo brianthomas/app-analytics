@@ -1,9 +1,9 @@
 '''
 Merge Application CSV files, software- and process-oriented, into a single file which can be read. 
 '''
+import pandas as pd
 
-def parse(file):
-    import pandas as pd
+def parse(file: str) -> pd.DataFrame:
 
     df = None
     if file.find('gz') == -1:
@@ -34,9 +34,13 @@ if __name__ == '__main__':
         ap.print_usage()
         exit()
 
+    # parse out out data into in-memory DataFrames
     process_data = parse(opts.process)
     software_data = parse(opts.software)
 
+    # make the merge
     merged_data = process_data.merge(software_data, how='outer', left_on='Device Name', right_on='Device Name')
+
+    # print back to STDOUT
     #print (merged_data)
     print(merged_data.to_csv())
