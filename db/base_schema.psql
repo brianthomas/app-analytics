@@ -1,0 +1,59 @@
+
+-- schema to model software from bigfix database
+--
+
+-- Center ids
+drop table if exists center_map cascade;
+create table center_map (
+   rowid serial primary key,
+   name varchar not null
+);
+insert into center_map ("name") VALUES ('NASA Shared Services Center');
+
+-- Devices (machines)
+drop table if exists devices cascade;
+create table devices (
+   rowid serial primary key,
+   name varchar not null, 
+   center_id BIGINT references center_map (rowid),
+   is_server int default 0 not null,
+   is_virtual int default 0 not null,
+   os_type varchar default 'unknown' not null
+);
+
+-- (software) processes which are in memory
+drop table if exists process cascade;
+create table process (
+   rowid serial primary key,
+   name varchar not null,
+   path varchar not null
+);
+
+-- (installed, on disk) software
+drop table if exists installed_software;
+create table installed_software (
+   rowid serial primary key,
+   name varchar not null,
+   location varchar not null
+);
+
+-- association tables
+
+-- devices to processes which they have
+drop table if exists dev_proc_assoc;
+create table dev_proc_assoc (
+   device_id BIGINT references devices (rowid),
+   process_id BIGINT references process (rowid),
+   UNIQUE (device_id, process_id) 
+);
+
+-- devices to software which they have
+drop table if exists dev_installed_assoc;
+create table dev_installed_assoc (
+   device_id BIGINT references devices (rowid),
+   software_id BIGINT references process (rowid),
+   UNIQUE (device_id, software_id) 
+);
+
+
+
