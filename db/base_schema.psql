@@ -6,9 +6,8 @@
 drop table if exists center_map cascade;
 create table center_map (
    rowid serial primary key,
-   name varchar not null
+   center_name varchar not null UNIQUE
 );
-insert into center_map ("name") VALUES ('NASA Shared Services Center');
 
 -- Devices (machines)
 drop table if exists devices cascade;
@@ -54,6 +53,13 @@ create table dev_installed_assoc (
    software_id BIGINT references process (rowid),
    UNIQUE (device_id, software_id) 
 );
+
+-- logging
+drop table if exists file_insert_log;
+create table file_insert_log (
+   filename varchar,
+   inserted timestamp default now() 
+); 
 
 
 
