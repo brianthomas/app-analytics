@@ -1,12 +1,29 @@
 
-drop view if exists device_software;
-create view device_software AS
-    select ds.*, s.software_name, s.install_location from
-        ( select d.rowid as device_id, d.*, a.software_id from 
-            (select * from device_software_assoc) as a
+drop view if exists device_process;
+create view device_process AS
+    select dp.*, p.process_name, p.process_path from
+        ( select d.rowid as device_id, d.*, a.process_id from 
+            (select * from device_process_assoc) as a
         inner join
             (select * from device_map ) as d
         on 
+            a.device_id = d.rowid
+        ) as dp
+        inner join
+        (select * from process_map ) as p
+        on
+            dp.process_id = p.rowid
+;
+
+
+drop view if exists device_software;
+create view device_software AS
+    select ds.*, s.software_name, s.install_location from
+        ( select d.rowid as device_id, d.*, a.software_id from
+            (select * from device_software_assoc) as a
+        inner join
+            (select * from device_map ) as d
+        on
             a.device_id = d.rowid
         ) as ds
         inner join
@@ -14,5 +31,4 @@ create view device_software AS
         on
             ds.software_id = s.rowid
 ;
-
 
