@@ -27,6 +27,7 @@ def _checkmaps(conn: psycopg2.extensions.connection, col: str, tbl: str, file_it
 
     for each in file_itms:
         if each not in existing_items:
+            each = each.replace("\'", "") #clean up formatting problems
             cur.execute(f'''INSERT INTO {tbl} ("{col}") VALUES ('{each}');''')
             LOG.debug(f"Inserted new item {col}: {each} into table {tbl}")
 
@@ -198,7 +199,6 @@ def _insert_software_files(dbname: str, fname: str):
 
     software_data = data[["software_id", "software_name", "install_location"]].drop_duplicates()
     LOG.debug(software_data)
-    print(software_data)
 
     dev_software_data = data[["software_id", "device_id"]].drop_duplicates()
     LOG.debug(dev_software_data)
@@ -228,7 +228,7 @@ def _insert_software_files(dbname: str, fname: str):
 
     # add new associations
     LOG.info("add new dev/process associations")
-    dev_software_data.to_sql('device_process_assoc', engine, if_exists='append', index=False)
+    dev_software_data.to_sql('device_software_assoc', engine, if_exists='append', index=False)
 
     # insert file into file_insert_log
     cur.execute(f'''INSERT INTO file_insert_log (filename) VALUES ('{fname}');''')
@@ -245,11 +245,11 @@ def _parse(file: str) -> pd.DataFrame:
         df = pd.read_csv(file, compression='gzip', encoding="cp437", skiprows=[0], skipfooter=1, engine='python') 
 
     # clean up data a little
+    cleaned = df
     for col in df: 
-        print ("Cleaning column: "+col)
-        df [col] = df[col].replace("\'", "");
+        cleaned [col] = df[col].replace("\'", "");
 
-    return df
+    return cleaned
 
 if __name__ == '__main__':
     import argparse
@@ -274,7 +274,7 @@ if __name__ == '__main__':
         exit()
 
     # load the data
-    #_insert_process_files (opts.dbname, opts.process)
+    _insert_process_files (opts.dbname, opts.process)
     _insert_software_files (opts.dbname, opts.software)
 
     LOG.info ("finished")
