@@ -1,0 +1,18 @@
+
+drop view if exists device_software;
+create view device_software AS
+    select ds.*, s.software_name, s.install_location from
+        ( select d.rowid as device_id, d.*, a.software_id from 
+            (select * from device_software_assoc) as a
+        inner join
+            (select * from device_map ) as d
+        on 
+            a.device_id = d.rowid
+        ) as ds
+        inner join
+        (select * from software_map ) as s
+        on
+            ds.software_id = s.rowid
+;
+
+
