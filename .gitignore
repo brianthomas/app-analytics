@@ -1,6 +1,7 @@
 .~*
 *.pyc
 *.log
+*.json
 *.pptx
 *.pkl
 *.pdf
