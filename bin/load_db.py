@@ -76,6 +76,8 @@ def _insert_process_files(dbname: str, fname: str):
                     'OS Version': 'os_version_id',\
                     'Is Server': 'is_server',\
                     'Is Virtual':'is_virtual',\
+                    'File Description': 'file_description',\
+                    'File Version': 'file_version',\
                     'Is Machine Internet Accessible': 'internet_accessible'
                   }
 
