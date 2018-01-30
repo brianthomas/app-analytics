@@ -14,7 +14,9 @@ drop table if exists process_map cascade;
 create table process_map (
    rowid serial primary key,
    process_name varchar,
-   process_path varchar not null UNIQUE
+   process_path varchar not null UNIQUE,
+   file_description varchar,
+   file_version varchar
 );
 
 drop table if exists os_map cascade;
@@ -65,6 +67,15 @@ drop table if exists file_insert_log;
 create table file_insert_log (
    filename varchar,
    inserted timestamp default now() 
+);
+
+-- harvested status results for processes
+drop table if exists process_status;
+create table process_status (
+   process_name varchar not NULL,
+   description varchar,
+   status varchar not NULL,
+   url varchar
 ); 
 
 
