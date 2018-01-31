@@ -1,5 +1,7 @@
+
+import bs4
 from bs4 import BeautifulSoup
-import time
+import re
 import logging
 import requests
 import psycopg2
@@ -18,12 +20,12 @@ def _create_connection (dbname: str) -> psycopg2.extensions.connection:
     ''' open connection to local postgresql server instance '''
     return psycopg2.connect(host="localhost",database=dbname, user="postgres", password="")
 
-def _check (search_url: str) -> list:
+def _check (processname: str, processpaths: list) -> list:
 
-    data = [] 
+    data = list()
 
     # grab page
-    get_request = requests.get(search_url)
+    get_request = requests.get(SEARCH_URL+processname)
 
     # now make parsable 
     soup=BeautifulSoup(get_request.content, "lxml")
@@ -46,18 +48,31 @@ def _check (search_url: str) -> list:
                 else:
                     count = 0
                     result = {}
+                    result['Processname'] = processname
                     for item in row.find_all('td'):
                         fieldname = fieldnames[count]
-                        if fieldname == 'Name':
-                            pass
-                        else:
-                            result[fieldname] = item.string
+                        result[fieldname] = item.text 
+
                         count = count + 1
-                    data.append(result)
+
+                    data.append(_add_location(result))
   
             break
 
     # return results
+    return data
+
+def _add_location(data: dict) -> dict:
+    ''' add the location based on regex on the description '''
+
+    data['Location'] = None
+
+    description = data['Description']
+    if description != None:
+        m = re.search('.+Note: Located in (.+?)$', description)
+        if m:
+            data['Location'] = m.group(1)
+
     return data
 
 def _get_process_list(dbname : str) -> set:
@@ -66,11 +81,17 @@ def _get_process_list(dbname : str) -> set:
     conn = _create_connection(dbname)
     cur = conn.cursor()
 
-    cur.execute("select distinct process_name from device_process;")
-    query = cur.fetchall()
-    apps = set([i[0] for i in query])
+    results = {}
 
-    return apps
+    cur.execute("select distinct process_name, process_path from device_process;")
+    query = cur.fetchall()
+
+    for i,j in query:
+        if i not in results:
+            results[i] = []
+        results[i].append(j)
+
+    return results 
 
 
 if __name__ == '__main__':
@@ -86,9 +107,9 @@ if __name__ == '__main__':
     opts = ap.parse_args()
 
     results = []
-    for processname in _get_process_list(opts.dbname): 
-        results.append(_check (SEARCH_URL+processname))
+    for processname, processpaths in _get_process_list(opts.dbname).items(): 
+        results.append(_check (processname, processpaths))
 
     print (json.dumps(results))
-    #print (results)
+    print (results)
 

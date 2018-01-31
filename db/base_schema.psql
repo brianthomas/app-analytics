@@ -73,9 +73,10 @@ create table file_insert_log (
 drop table if exists process_status;
 create table process_status (
    process_name varchar not NULL,
+   file_name varchar not NULL,
    description varchar,
-   status varchar not NULL,
-   url varchar
+   location varchar,
+   status varchar not NULL
 ); 
 
 
