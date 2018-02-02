@@ -23,11 +23,12 @@ def _load_process_list(dbname : str, procs : list):
            pname = pdict['Processname']
            fname = pdict['Filename']
            loc = pdict['Location']
+           note = pdict['Note']
            desc = pdict['Description']
            status = pdict['Status']
 
            # insert file into file_insert_log
-           cur.execute(f'''INSERT INTO process_status ("process_name", "file_name", "description", "status", "location") VALUES ('{pname}', '{fname}', '{desc}', '{status}', '{loc}');''')
+           cur.execute(f'''INSERT INTO process_status ("process_name", "file_name", "description", "status", "location", "note") VALUES ('{pname}', '{fname}', '{desc}', '{status}', '{loc}', '{note}');''')
 
     conn.commit()
 

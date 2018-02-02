@@ -76,6 +76,7 @@ create table process_status (
    file_name varchar not NULL,
    description varchar,
    location varchar,
+   note varchar,
    status varchar not NULL
 ); 
 

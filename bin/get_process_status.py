@@ -51,7 +51,7 @@ def _check (processname: str, processpaths: list) -> list:
                     result['Processname'] = processname
                     for item in row.find_all('td'):
                         fieldname = fieldnames[count]
-                        result[fieldname] = item.text 
+                        result[fieldname] = item.text.replace("'", "") 
 
                         count = count + 1
 
@@ -66,12 +66,17 @@ def _add_location(data: dict) -> dict:
     ''' add the location based on regex on the description '''
 
     data['Location'] = None
+    data['Note'] = None
 
     description = data['Description']
     if description != None:
         m = re.search('.+Note: Located in (.+?)$', description)
         if m:
             data['Location'] = m.group(1)
+            m2 = re.search('(.+)Note: (.+?)$', data['Location'])
+            if m2:
+                data['Location'] = m2.group(1)
+                data['Note'] = m2.group(2)
 
     return data
 
@@ -111,5 +116,4 @@ if __name__ == '__main__':
         results.append(_check (processname, processpaths))
 
     print (json.dumps(results))
-    print (results)
 

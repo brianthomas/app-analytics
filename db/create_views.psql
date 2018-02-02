@@ -1,5 +1,5 @@
 
-drop view if exists device_process;
+drop view if exists device_process cascade;
 create view device_process AS
     select dp.*, p.process_name, p.process_path from
         ( select d.rowid as device_id, d.*, a.process_id from 
@@ -32,3 +32,15 @@ create view device_software AS
             ds.software_id = s.rowid
 ;
 
+
+create extension fuzzystrmatch;
+
+drop view if exists process_compare;
+create view process_compare AS
+    select ps.file_name, (ps.location || dp.process_name) as location, ps.status, dp.process_name, dp.process_path, levenshtein(ps.location, dp.process_path) as dist from
+        ( select * from process_status ) as ps 
+        inner join
+        (select * from device_process ) as dp
+        on
+            dp.process_name = ps.process_name
+;
