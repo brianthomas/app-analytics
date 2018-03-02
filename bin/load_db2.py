@@ -1,5 +1,5 @@
 '''
-Load Application CSV files, software-oriented, into a postgresql database.
+Load Application CSV files harvested from BigFix console (rather than EDW), which are software-oriented, into a postgresql database.
 '''
 import psycopg2
 import pandas as pd
@@ -52,6 +52,7 @@ def _insert_software_files(dbname: str, fname: str):
             "_HomeCenter": "center_map",\
             "Computer Name": "device_map",\
             "software_hash": "software_map",\
+            "IP Address": "ip_map",\
             "OS": "os_map",\
                     }
 
@@ -62,6 +63,11 @@ def _insert_software_files(dbname: str, fname: str):
                     'Version': 'software_version',\
                     'software_hash': 'software_hash',\
                     'Install Location': 'install_location',\
+                    'IP Address': 'ip_address',\
+                    'CPU': 'cpu',\
+                    'CPUS': 'cpu_cores',\
+                    'Last Report Time': 'report_time',\
+                    'Device Type': 'device_type',\
                     'OS': 'os_name'
                    # 'Is Server': 'is_server',\
                    # 'Is Virtual':'is_virtual',\
@@ -88,27 +94,36 @@ def _insert_software_files(dbname: str, fname: str):
     cur.execute('select rowid, os_name from os_map;')
     os_dict = {k:v for v, k in cur.fetchall()}
 
+    # remap ip to an id
+    cur.execute('select rowid, ip_address from ip_map;')
+    ip_dict = {k:v for v, k in cur.fetchall()}
+
     LOG.info("Fixing software data -- invoking remap")
     data['center_id'] = data['_HomeCenter'].replace(center_dict)
     data['device_id'] = data['Computer Name'].replace(device_dict)
     data['software_id'] = data['software_hash'].replace(software_dict)
     data['os_id'] = data['OS'].replace(os_dict)
+    data['ip_id'] = data['IP Address'].replace(ip_dict)
 
     # do the rename
     data.rename(columns = col_replace, inplace=True)
 
     LOG.info("data slicing")
-    device_data = data[["device_id", "center_id", "os_id",
+    device_data = data[["device_id", "center_id", "os_id", "cpu", "cpu_cores", "device_type"
 #                        "is_server",\
 #                        "is_virtual", 
                ]].drop_duplicates()
     LOG.debug(device_data)
 
-    software_data = data[["software_id", "software_name", "software_version", "install_location"]].drop_duplicates()
+    software_data = data[["software_id", "software_name", "software_version", "install_location"
+               ]].drop_duplicates()
     LOG.debug(software_data)
 
     dev_software_data = data[["software_id", "device_id"]].drop_duplicates()
     LOG.debug(dev_software_data)
+
+    dev_ip_data = data[["ip_id", "device_id", "report_time"]].drop_duplicates()
+    LOG.debug(dev_ip_data)
 
     # build the tables now
     from sqlalchemy import create_engine
@@ -118,7 +133,9 @@ def _insert_software_files(dbname: str, fname: str):
     LOG.info("update device metadata")
     device_data.to_sql('temp_table', engine, if_exists='replace', index=False)
     sql = "UPDATE device_map AS f" + \
-          " SET center_id = t.center_id, os_id = t.os_id" +\
+          " SET center_id = t.center_id, os_id = t.os_id," +\
+          " cpu = t.cpu, cpu_cores = (t.cpu_cores)::integer," +\
+          " device_type = t.device_type" +\
           " FROM temp_table AS t" + \
           " WHERE f.rowid = t.device_id"
     #     ", is_server = t.is_server" +\
@@ -136,6 +153,7 @@ def _insert_software_files(dbname: str, fname: str):
     # add new associations
     LOG.info("add new dev/process associations")
     dev_software_data.to_sql('device_software_assoc', engine, if_exists='append', index=False)
+    dev_ip_data.to_sql('device_ip_assoc', engine, if_exists='append', index=False)
 
     # insert file into file_insert_log
     cur.execute(f'''INSERT INTO file_insert_log (filename) VALUES ('{fname}');''')
@@ -159,6 +177,9 @@ def _software_hash (row):
 
 def _parse(file: str) -> pd.DataFrame:
 
+    # Header of parsed file
+    # Computer Name,User Name,Device Type,Number of Processor Cores - Windows,Number of Processor Cores - Mac OS X,Installed Applications,Installed Applications,_HomeCenter,IP Address,OS,CPU,Last Report Time
+
     special_delim_char = '•';
 
     df = None
@@ -167,28 +188,43 @@ def _parse(file: str) -> pd.DataFrame:
     else:
         df = pd.read_csv(file, compression='gzip', encoding="utf-8", engine='c') 
 
-    # drop out crap rows
-    df = df[df['Installed Applications.1'] != "DisplayName • DisplayVersion • Publisher • InstallDate • InstallLocation • URLInfoAbout"] 
-    df = df[df['Installed Applications'] != "DisplayName • DisplayVersion • CreationTime • InstallLocation"] 
+    # find which data are Windows, which are Mac OS
+    result = df['Installed Applications'] != "DisplayName • DisplayVersion • Publisher • InstallDate • InstallLocation • URLInfoAbout" 
+    if result[0] == True:
+        windows_install_app_col = 'Installed Applications' 
+        macos_install_app_col = 'Installed Applications.1' 
+    else:
+        windows_install_app_col = 'Installed Applications.1' 
+        macos_install_app_col = 'Installed Applications' 
+
+    # drop out crap rows (essentially are cut in headers) which are not used/contain no data of use 
+    df = df[df[windows_install_app_col] != "DisplayName • DisplayVersion • Publisher • InstallDate • InstallLocation • URLInfoAbout"] 
+    df = df[df[macos_install_app_col] != "DisplayName • DisplayVersion • CreationTime • InstallLocation"] 
 
     # split out the Installed Applications column
-    df1, df2 = [x for _, x in df.groupby(df['Installed Applications'] != "<not reported>")]
+    df1, df2 = [x for _, x in df.groupby(df['Number of Processor Cores - Mac OS X'] != '<not reported>')]
 
     # Now, depending on column split out the Installed Applications columns into set of cols w/ no nulls
 
-    # Windows : DisplayName • DisplayVersion • Publisher • InstallDate • InstallLocation • URLInfoAbout
-    new_df1 = df1.join(df1['Installed Applications.1'].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Publisher', 3:'Install Date', 4:'Install Location', 5:'URL'})) 
+    # Windows 
+    # parse out installed apps : 
+    #     DisplayName • DisplayVersion • Publisher • InstallDate • InstallLocation • URLInfoAbout
+    new_df1 = df1.join(df1[windows_install_app_col].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Publisher', 3:'Install Date', 4:'Install Location', 5:'URL'})) 
+    new_df1.drop(['Number of Processor Cores - Mac OS X'], axis=1, inplace=True)
+    new_df1.rename(index=str, columns={"Number of Processor Cores - Windows": "CPUS"}, inplace=True)
 
-    # Mac OS : DisplayName • DisplayVersion • CreationTime • InstallLocation
-    new_df2 = df2.join(df2['Installed Applications'].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Install Date', 3:'Install Location'})) 
+    # Mac OS 
+    # parse out installed apps: 
+    #     DisplayName • DisplayVersion • CreationTime • InstallLocation
+    new_df2 = df2.join(df2[macos_install_app_col].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Install Date', 3:'Install Location'})) 
+    new_df2.drop(['Number of Processor Cores - Windows'], axis=1, inplace=True)
+    new_df2.rename(index=str, columns={"Number of Processor Cores - Mac OS X": "CPUS"}, inplace=True)
 
     # append them together rowwise
     df = pd.concat([new_df1, new_df2])
 
     # drop out more crap rows
     # df = df[df['Software Name'] == ""] 
-
-    #print (df)
 
     # add software hash column
     df['software_hash'] = df.apply(_software_hash, axis=1)
@@ -198,7 +234,7 @@ def _parse(file: str) -> pd.DataFrame:
     for col in df: 
         cleaned [col] = df[col].replace("\'", "");
 
-    print (cleaned)
+    #print (cleaned)
 
     return cleaned
 

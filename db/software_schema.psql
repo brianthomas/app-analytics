@@ -16,14 +16,23 @@ create table os_map (
    os_name varchar not null UNIQUE
 );
 
+drop table if exists ip_map cascade;
+create table ip_map (
+   rowid serial primary key,
+   ip_address varchar not null UNIQUE
+);
+
 -- Devices (machines)
 drop table if exists device_map cascade;
 create table device_map (
    rowid serial primary key,
    device_name varchar not null UNIQUE,
+   device_type varchar,
+   cpu varchar,
+   cpu_cores int default 0,
    center_id BIGINT references center_map (rowid),
-   is_server int default 0,
-   is_virtual int default 0,
+   -- is_server int default 0,
+   -- is_virtual int default 0,
    os_id BIGINT references os_map (rowid)
 );
 
@@ -45,6 +54,13 @@ create table device_software_assoc (
    software_id BIGINT references software_map (rowid),
    -- install_date timestamp,
    UNIQUE (software_id, device_id)
+);
+
+drop table if exists device_ip_assoc cascade;
+create table device_ip_assoc (
+   device_id BIGINT references device_map (rowid),
+   ip_id BIGINT references ip_map (rowid),
+   report_time timestamp
 );
 
 -- logging
