@@ -1,0 +1,56 @@
+
+-- Trimmed down schema for just modeling devices to installed software
+-- from bigfix database
+--
+
+-- Center ids
+drop table if exists center_map cascade;
+create table center_map (
+   rowid serial primary key,
+   center_name varchar not null UNIQUE
+);
+
+drop table if exists os_map cascade;
+create table os_map (
+   rowid serial primary key,
+   os_name varchar not null UNIQUE
+);
+
+-- Devices (machines)
+drop table if exists device_map cascade;
+create table device_map (
+   rowid serial primary key,
+   device_name varchar not null UNIQUE,
+   center_id BIGINT references center_map (rowid),
+   is_server int default 0,
+   is_virtual int default 0,
+   os_id BIGINT references os_map (rowid)
+);
+
+-- (installed, on disk) software
+drop table if exists software_map cascade;
+create table software_map (
+   rowid serial primary key,
+   software_hash varchar not null UNIQUE,
+   software_name varchar,
+   software_version varchar,
+   install_location varchar
+);
+
+-- association tables
+
+drop table if exists device_software_assoc cascade;
+create table device_software_assoc (
+   device_id BIGINT references device_map (rowid),
+   software_id BIGINT references software_map (rowid),
+   -- install_date timestamp,
+   UNIQUE (software_id, device_id)
+);
+
+-- logging
+drop table if exists file_insert_log;
+create table file_insert_log (
+   filename varchar,
+   inserted timestamp default now() 
+);
+
