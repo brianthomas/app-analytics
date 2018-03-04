@@ -51,9 +51,9 @@ create table software_map (
 drop table if exists device_software_assoc cascade;
 create table device_software_assoc (
    device_id BIGINT references device_map (rowid),
-   software_id BIGINT references software_map (rowid),
+   software_id BIGINT references software_map (rowid)
    -- install_date timestamp,
-   UNIQUE (software_id, device_id)
+   -- UNIQUE (software_id, device_id)
 );
 
 drop table if exists device_ip_assoc cascade;
