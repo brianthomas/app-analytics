@@ -47,7 +47,9 @@ def _checkmaps(conn: psycopg2.extensions.connection, col: str, tbl: str, file_it
     existing_items = set([i[0] for i in query])
 
     for each in file_itms:
-        if each not in existing_items:
+        #print(str(type(each)))
+        #print(each)
+        if str(each) not in existing_items:
             # clean up formatting problems
             if each != None and type(each) == str:
                 each = each.replace("\'", "") 
@@ -59,38 +61,8 @@ def _checkmaps(conn: psycopg2.extensions.connection, col: str, tbl: str, file_it
 
 def _update_assocs(conn: psycopg2.extensions.connection, engine, tbl: str, columns: list, values: pd.DataFrame):
 
-    '''
-    cur = conn.cursor()
-    col1 = columns[0]
-    col2 = columns[1]
-
-    cur.execute(f'''SELECT DISTINCT "{col1}", "{col2}" from {tbl};''')
-    query = cur.fetchall()
-
-    existing_assocs = {}
-    for i in query:
-        if i[0] not in existing_assocs:
-            existing_assocs[i[0]] = []
-        existing_assocs[i[0]].append(i[1])
-
-    rec_index = 0
-    drop_records=[]
-    for rec in values.to_dict('records'):
-        val1 = rec[col1]
-        val2 = rec[col2]
-        if val1 in existing_assocs and val2 not in existing_assocs[val1]: 
-            # record index for dropping
-            drop_records.append(rec_index)
-        rec_index = rec_index + 1
-
-    if len(drop_records) > 0:
-        values.drop(values.index[drop_records], inplace=True)
-    '''
-            
     # do the update
     values.to_sql(tbl, engine, if_exists='append', index=False)
-
-    # conn.commit()
 
 
 def _insert_csv (dbname: str, fname: str, rowsize: int) -> None:
@@ -241,7 +213,7 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
     ''' rearrange and clean data in the dataframe '''
 
     LOG.info("Cleaning DataFrame")
-    LOG.info("  Cols : "+ str(df.columns.values.tolist()))
+    # LOG.info("  Cols : "+ str(df.columns.values.tolist()))
 
     # Header of parsed file
     # Computer Name,User Name,Device Type,Number of Processor Cores - Windows,Number of Processor Cores - Mac OS X,Installed Applications,Installed Applications,_HomeCenter,IP Address,OS,CPU,Last Report Time
@@ -338,10 +310,10 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
     # add software hash column
     df['software_hash'] = df.apply(_software_hash, axis=1)
 
-    LOG.info("Clean out apostrophes from data")
+    LOG.info("Clean out single, double quotes from data")
     # clean up data a little
     for col in df: 
-        df[col].replace("\'", "", inplace=True);
+        df[col] = df[col].str.replace(r"[\"\',]", "");
 
     #print (df)
 
