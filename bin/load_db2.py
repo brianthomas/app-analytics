@@ -12,7 +12,7 @@ LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
 COL_REPLACE = {
-                    '_HomeCenter': 'center_name',\
+                    'HomeCenter': 'center_name',\
                     'Computer Name': 'device_name',\
                     'Software Name': 'software_name',\
                     'Version': 'software_version',\
@@ -99,7 +99,7 @@ def _insert_df (dbname: str, df: pd.DataFrame) -> None:
     master_dict = _build_dictionaries(conn)  
 
     LOG.info("Fixing data -- invoking remap centers")
-    data['center_id'] = data['_HomeCenter'].replace(master_dict['center'])
+    data['center_id'] = data['HomeCenter'].replace(master_dict['center'])
 
     LOG.info("Fixing data -- invoking remap devices")
     data['device_id'] = data['Computer Name'].replace(master_dict['device'])
@@ -144,7 +144,7 @@ def _insert_df (dbname: str, df: pd.DataFrame) -> None:
           " FROM temp_table AS t" + \
           " WHERE f.rowid = t.device_id"
     #     ", is_server = t.is_server" +\
-    print (sql)
+    #print (sql)
     cur.execute(sql)
     conn.commit()
 
@@ -216,7 +216,7 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
     # LOG.info("  Cols : "+ str(df.columns.values.tolist()))
 
     # Header of parsed file
-    # Computer Name,User Name,Device Type,Number of Processor Cores - Windows,Number of Processor Cores - Mac OS X,Installed Applications,Installed Applications,_HomeCenter,IP Address,OS,CPU,Last Report Time
+    # Computer Name,User Name,Device Type,Number of Processor Cores - Windows,Number of Processor Cores - Mac OS X,Installed Applications,Installed Applications,HomeCenter,IP Address,OS,CPU,Last Report Time
 
     special_delim_char = '•';
 
@@ -240,6 +240,7 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
     win_df = None 
     macos_df = None
     try:
+        #print(df)
         win_df, macos_df = [x for _, x in df.groupby(df['Number of Processor Cores - Windows'] == '<not reported>')]
     except ValueError: 
         # there are no windows or MacOS machines in the dataset, filter for which
@@ -325,7 +326,7 @@ def _update_db_maps(conn: psycopg2.extensions.connection, data: pd.DataFrame):
 
     LOG.info ("Doing mapping checks")
     mapping_check = {
-            "_HomeCenter": "center_map",\
+            "HomeCenter": "center_map",\
             "Computer Name": "device_map",\
             "software_hash": "software_map",\
             # "IP Address": "ip_map",\
