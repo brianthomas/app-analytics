@@ -240,7 +240,7 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
     win_df = None 
     macos_df = None
     try:
-        #print(df)
+        print(df)
         win_df, macos_df = [x for _, x in df.groupby(df['Number of Processor Cores - Windows'] == '<not reported>')]
     except ValueError: 
         # there are no windows or MacOS machines in the dataset, filter for which

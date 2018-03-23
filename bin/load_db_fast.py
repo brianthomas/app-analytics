@@ -1,6 +1,8 @@
 '''
 Load Application CSV files harvested from BigFix console (rather than EDW), which are software-oriented, into a postgresql database.
 '''
+# -*- coding: utf-8 -*-
+
 import psycopg2
 import pandas as pd
 import logging
@@ -72,17 +74,34 @@ def _insert_csv (dbname: str, fname: str, rowsize: int) -> None:
 
     LOG.info("Inserting data from CSV file: {0}".format(fname))
 
-    reader = csv.DictReader(codecs.open(fname, 'rU', 'utf-8'))
-    for row in reader:
-        print(row)
+    #with open(fname, newline='', encoding='utf8') as csvfile:
+    with open(fname, encoding='utf-8-sig',  errors="backslashreplace") as csvfile:
+        content = csvfile.readlines()
 
+    # replace NULL chars in content
+    new_content = []
+    for line in content:
+        new_content.append(line.replace('\000', ''))
+
+    # now parse as csv
+    reader = csv.DictReader(new_content)
     '''
-    reader = None
-    if fname.find('gz') == -1:
-        reader = pd.read_csv(fname, chunksize = rowsize, encoding="utf-8", engine='c', dtype='str', low_memory=True)   
-    else:
-        reader = pd.read_csv(fname, chunksize = rowsize, compression='gzip', encoding="utf-8", engine='c', dtype='str', low_memory=True)
+    rownr = 1
+    for row in reader:
+        print(rownr)
+        print(row)
+        rownr += 1
 
+    print ("Read lines : "+str(len(content)))
+    print ("Read NC lines : "+str(len(new_content)))
+    print (content[973])
+    print (new_content[973])
+    '''
+
+    #reader = csv.DictReader(codecs.open(fname, 'rU', 'utf_8_sig'))
+    #with open(fname, newline='', encoding='utf_8_sig', errors='backslashreplace') as csvfile:
+    #with open(fname, newline='', encoding='utf-16-le', errors='backslashreplace') as csvfile:
+    '''
     for chunk in reader:
         _insert_chunk (dbname, chunk)
 
