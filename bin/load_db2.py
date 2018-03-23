@@ -67,13 +67,24 @@ def _update_assocs(conn: psycopg2.extensions.connection, engine, tbl: str, colum
 
 def _insert_csv (dbname: str, fname: str, rowsize: int) -> None:
 
+    from io import StringIO
+
     LOG.info("Inserting data from CSV file: {0}".format(fname))
 
-    reader = None
-    if fname.find('gz') == -1:
-        reader = pd.read_csv(fname, chunksize = rowsize, encoding="utf-8", engine='c', dtype='str', low_memory=True)   
-    else:
-        reader = pd.read_csv(fname, chunksize = rowsize, compression='gzip', encoding="utf-8", engine='c', dtype='str', low_memory=True)
+    # clean the data of nulls
+    content = ""
+    with open(fname, encoding='utf-8-sig',  errors="backslashreplace") as csvfile:
+        while True:
+            line = csvfile.readline().replace('\000', '')
+            content += line 
+            if not line:
+                break
+
+    print (content)
+    parse_content = StringIO(content)
+
+    #reader = pd.read_csv(parse_content, chunksize = rowsize, compression='gzip', encoding="utf-8", engine='c', dtype='str', low_memory=True)
+    reader = pd.read_csv(parse_content, chunksize = rowsize, encoding="utf-8", engine='c', dtype='str', low_memory=True)
 
     for chunk in reader:
         _insert_df (dbname, chunk)
