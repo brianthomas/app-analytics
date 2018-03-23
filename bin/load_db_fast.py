@@ -6,7 +6,7 @@ Load Application CSV files harvested from BigFix console (rather than EDW), whic
 import psycopg2
 import pandas as pd
 import logging
-
+import csv
 import hashlib
 
 logging.basicConfig(level=logging.INFO)
@@ -66,45 +66,56 @@ def _update_assocs(conn: psycopg2.extensions.connection, engine, tbl: str, colum
     # do the update
     values.to_sql(tbl, engine, if_exists='append', index=False)
 
+def _read_file_content (fname: str) -> list:
+
+    LOG.info("Reading data from CSV file: {0}".format(fname))
+
+    with open(fname, encoding='utf-8-sig',  errors="backslashreplace") as csvfile:
+        content = []
+        header = False
+        while True:
+            line = csvfile.readline().replace('\000', '')
+            if not header:
+                header = line
+            else:
+                content.append(line)
+
+            if not line:
+                break
+
+    return [header, content] 
+
+
 
 def _insert_csv (dbname: str, fname: str, rowsize: int) -> None:
 
-    import csv
-    import codecs
+
+    header, content = _read_file_content(fname)
+
+    print (header)
+    print (type(header))
+    print (type(content))
 
     LOG.info("Inserting data from CSV file: {0}".format(fname))
+   
+    contentlen = len(content)
+    strrow = 0
+    while strrow < contentlen:
+       
+        endrow = strrow + rowsize -1 
+        if endrow > contentlen:
+            endrow = contentlen-1 
 
-    #with open(fname, newline='', encoding='utf8') as csvfile:
-    with open(fname, encoding='utf-8-sig',  errors="backslashreplace") as csvfile:
-        content = csvfile.readlines()
+        raw_chunk = list() 
+        raw_chunk.append(header) 
+        raw_chunk += content[strrow:endrow]
 
-    # replace NULL chars in content
-    new_content = []
-    for line in content:
-        new_content.append(line.replace('\000', ''))
-
-    # now parse as csv
-    reader = csv.DictReader(new_content)
+        # process the chunk
+         _insert_chunk (dbname, csv.Dictreader(raw_chunk))
+        
+        strrow += rowsize
+    
     '''
-    rownr = 1
-    for row in reader:
-        print(rownr)
-        print(row)
-        rownr += 1
-
-    print ("Read lines : "+str(len(content)))
-    print ("Read NC lines : "+str(len(new_content)))
-    print (content[973])
-    print (new_content[973])
-    '''
-
-    #reader = csv.DictReader(codecs.open(fname, 'rU', 'utf_8_sig'))
-    #with open(fname, newline='', encoding='utf_8_sig', errors='backslashreplace') as csvfile:
-    #with open(fname, newline='', encoding='utf-16-le', errors='backslashreplace') as csvfile:
-    '''
-    for chunk in reader:
-        _insert_chunk (dbname, chunk)
-
     # insert file into file_insert_log
     conn = _create_connection(dbname)
     cur = conn.cursor()
@@ -113,11 +124,14 @@ def _insert_csv (dbname: str, fname: str, rowsize: int) -> None:
     #conn.commit()
     #conn.close()
 
-def _insert_chunk (dbname: str, chunk: pd.DataFrame) -> None:
-    ''' insert a dataframe into the database '''
 
-    data = _clean_df(chunk)
+def _insert_chunk (dbname: str, chunk: csv.Dictreader) -> None:
+    ''' insert a chunk of information into the database '''
 
+    # data cleaning
+    data = _clean_data(chunk)
+
+    '''
     LOG.info("Create DB connection")
     conn = _create_connection(dbname)
 
@@ -193,6 +207,7 @@ def _insert_chunk (dbname: str, chunk: pd.DataFrame) -> None:
 
     conn.commit()
     conn.close()
+    '''
 
 
 def _build_dictionaries (conn: psycopg2.extensions.connection) -> dict:
@@ -237,7 +252,7 @@ def _software_hash (row):
 
     return hash_object.hexdigest()
 
-def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
+def _clean_data (data: csv.OrderedDict) -> pd.DataFrame:
     ''' rearrange and clean data in the dataframe '''
 
     LOG.info("Cleaning DataFrame")
