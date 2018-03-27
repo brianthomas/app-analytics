@@ -4,7 +4,7 @@ Load Application CSV files harvested from BigFix console (rather than EDW), whic
 import psycopg2
 import pandas as pd
 import logging
-
+import time
 import hashlib
 
 logging.basicConfig(level=logging.INFO)
@@ -80,14 +80,15 @@ def _insert_csv (dbname: str, fname: str, rowsize: int) -> None:
             if not line:
                 break
 
-    print (content)
     parse_content = StringIO(content)
 
     #reader = pd.read_csv(parse_content, chunksize = rowsize, compression='gzip', encoding="utf-8", engine='c', dtype='str', low_memory=True)
     reader = pd.read_csv(parse_content, chunksize = rowsize, encoding="utf-8", engine='c', dtype='str', low_memory=True)
 
     for chunk in reader:
+        start = time.clock()
         _insert_df (dbname, chunk)
+        LOG.info("Wallclock time of chunk: "+str(time.clock()-start)+" s")
 
     # insert file into file_insert_log
     conn = _create_connection(dbname)
@@ -224,17 +225,19 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
     ''' rearrange and clean data in the dataframe '''
 
     LOG.info("Cleaning DataFrame")
-    # LOG.info("  Cols : "+ str(df.columns.values.tolist()))
+    LOG.debug("  Cols : "+ str(df.columns.values.tolist()))
 
     # Header of parsed file
-    # Computer Name,User Name,Device Type,Number of Processor Cores - Windows,Number of Processor Cores - Mac OS X,Installed Applications,Installed Applications,HomeCenter,IP Address,OS,CPU,Last Report Time
+    # Computer Name,User Name,Device Type,Number of Processor Cores - Windows,Number of Processor Cores - Mac OS X,Installed Applications,Installed Applications.1,HomeCenter,IP Address,OS,CPU,Last Report Time
 
     special_delim_char = '•';
 
-    # find which data are Windows, which are Mac OS
-    result = df['Installed Applications'] != "DisplayName • DisplayVersion • Publisher • InstallDate • InstallLocation • URLInfoAbout" 
+    # print(df['Installed Applications'])
 
-    if True in result:
+    # find which data are Windows, which are Mac OS
+    # and set the installed app columns appropriately
+    #
+    if "DisplayName • DisplayVersion • Publisher • InstallDate • InstallLocation • URLInfoAbout" in df['Installed Applications']:
         windows_install_app_col = 'Installed Applications' 
         macos_install_app_col = 'Installed Applications.1' 
     else:
@@ -251,9 +254,12 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
     win_df = None 
     macos_df = None
     try:
-        print(df)
+        # print(df)
         win_df, macos_df = [x for _, x in df.groupby(df['Number of Processor Cores - Windows'] == '<not reported>')]
+
     except ValueError: 
+
+        LOG.debug("Got ValueError on Split, no win or mac machines?")
         # there are no windows or MacOS machines in the dataset, filter for which
         check = df['Number of Processor Cores - Windows']
         if len(check == '<not reported>') > 0:
@@ -272,12 +278,14 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
         # parse out installed apps : 
         #     DisplayName • DisplayVersion • Publisher • InstallDate • InstallLocation • URLInfoAbout
 
-        LOG.info("Parse windows installed apps")
+        LOG.info("Parse windows installed apps using column: "+windows_install_app_col)
 
-        new_win_df = win_df.join(win_df[windows_install_app_col].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Publisher', 3:'Install Date', 4:'Install Location', 5:'URL'})) 
+        new_win_df = win_df.join( win_df[windows_install_app_col].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Publisher', 3:'Install Date', 4:'Install Location', 5:'URL'})) 
         new_win_df.drop(['Number of Processor Cores - Mac OS X'], axis=1, inplace=True)
         new_win_df.drop(['Installed Applications', 'Installed Applications.1'], axis=1, inplace=True)
         new_win_df.rename(index=str, columns={"Number of Processor Cores - Windows": "CPUS"}, inplace=True)
+
+        # print (new_win_df)
 
     if macos_df is not None:
         # Mac OS 
