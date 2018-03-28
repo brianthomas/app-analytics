@@ -110,20 +110,20 @@ def _insert_df (dbname: str, df: pd.DataFrame) -> None:
 
     master_dict = _build_dictionaries(conn)  
 
-    LOG.info("Fixing data -- invoking remap centers")
-    data['center_id'] = data['HomeCenter'].replace(master_dict['center'])
+    LOG.info("Fixing data -- building ids for centers")
+    data['center_id'] = data['HomeCenter'].map(master_dict['center'])
 
-    LOG.info("Fixing data -- invoking remap devices")
-    data['device_id'] = data['Computer Name'].replace(master_dict['device'])
+    LOG.info("Fixing data -- building ids for devices")
+    data['device_id'] = data['Computer Name'].map(master_dict['device'])
 
-    LOG.info("Fixing data -- invoking remap software")
-    data['software_id'] = data['software_hash'].replace(master_dict['software'])
+    LOG.info("Fixing data -- building ids for software")
+    data['software_id'] = data['software_hash'].map(master_dict['software'])
 
-    LOG.info("Fixing data -- invoking remap os")
-    data['os_id'] = data['OS'].replace(master_dict['os'])
+    LOG.info("Fixing data -- building ids for os")
+    data['os_id'] = data['OS'].map(master_dict['os'])
 
-    #LOG.info("Fixing data -- invoking remap")
-    #data['ip_id'] = data['IP Address'].replace(ip_dict)
+    #LOG.info("Fixing data -- building ids for ip address")
+    #data['ip_id'] = data['IP Address'].map(ip_dict)
 
     # do the rename
     LOG.info("Fixing data -- rename columns")
