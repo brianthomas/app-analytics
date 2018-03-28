@@ -1,6 +1,16 @@
 
 -- trimmed down schema for just software 
 --
+drop view if exists devices;
+create view devices AS
+    select d.*, os.os_name from 
+        ( select * from os_map) as os
+          inner join
+        (select * from device_map ) as d
+          on
+          d.os_id = os.rowid
+;
+
 drop view if exists device_software;
 create view device_software AS
     select ads.*, os.os_name from 
