@@ -226,6 +226,7 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
 
     LOG.info("Cleaning DataFrame")
     LOG.debug("  Cols : "+ str(df.columns.values.tolist()))
+    LOG.info("  Cols : "+ str(df.dtypes))
 
     # Header of parsed file
     # Computer Name,User Name,Device Type,Number of Processor Cores - Windows,Number of Processor Cores - Mac OS X,Installed Applications,Installed Applications.1,HomeCenter,IP Address,OS,CPU,Last Report Time
@@ -333,7 +334,8 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
     LOG.info("Clean out single, double quotes from data")
     # clean up data a little
     for col in df: 
-        df[col] = df[col].str.replace(r"[\"\',]", "");
+        if df[col].dtype != 'int64':
+            df[col] = df[col].str.replace(r"[\"\',]", "")
 
     #print (df)
 
