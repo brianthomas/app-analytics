@@ -11,25 +11,38 @@ create view devices AS
           d.os_id = os.rowid
 ;
 
+-- this view doesnt make all of the possible joins, just a basic join
+-- between software and devices
+drop view if exists device_software_basic;
+create view device_software_basic AS
+    select ds.*, s.software_name, s.install_location from
+       ( select d.rowid as device_id, d.*, a.software_id from
+          (select DISTINCT * from device_software_assoc) as a
+           inner join
+          (select * from device_map ) as d
+           on
+          a.device_id = d.rowid
+       ) as ds
+        inner join
+       (select * from software_map ) as s
+        on
+       ds.software_id = s.rowid
+;
+
+
 drop view if exists device_software;
 create view device_software AS
-    select ads.*, os.os_name from 
+  select adsc.*, cntr.center_name from 
+    (select ads.*, os.os_name from 
         ( select * from os_map) as os
           inner join
-        ( select ds.*, s.software_name, s.install_location from
-           ( select d.rowid as device_id, d.*, a.software_id from
-              (select DISTINCT * from device_software_assoc) as a
-              inner join
-              (select * from device_map ) as d
-              on
-              a.device_id = d.rowid
-           ) as ds
-              inner join
-           (select * from software_map ) as s
-           on
-              ds.software_id = s.rowid
-        ) as ads
+        ( select * from device_software_basic ) as ads
         on
           ads.os_id = os.rowid
+    ) as adsc
+    inner join 
+    ( select * from center_map ) as cntr
+    on
+      adsc.center_id = cntr.rowid
 ;
 
