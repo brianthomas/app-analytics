@@ -1,4 +1,4 @@
-# Applications Program Analytics Project
+# Applications Program Analytics Project - Software Installed 
 
 ## About
 This project is an investigation of NASA Applications using data harvested from Bigfix database using Web reports interface.
