@@ -19,7 +19,7 @@ up and running before doing anything else. Once it is up, create the 'apps' data
 > psql -d apps -f base_schema.psql
  
 # Next, gather up harvested csv data files (from itsec-edw bigfix db site) and run  
-> python bin/load_db.py --processes <csv files> --software <csv files> 
+> python bin/load_db.py -f <csv file> 
 
 # This should load the data into the db. Afterwards, run the following 
 > psql -d apps -f create_software_views.psql 
