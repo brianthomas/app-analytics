@@ -1,7 +1,8 @@
 # Applications Program Analytics Project
 
 ## About
-This project is an investigation of NASA Applications using data harvested from ITSEC-EDW Bigfix database.
+This project is an investigation of NASA Applications using data harvested from Bigfix database using Web reports interface.
+
 All analysis code sits in notebooks directory. 
 
 ## Install
