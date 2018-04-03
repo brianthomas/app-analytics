@@ -1,8 +1,6 @@
 
 import psycopg2
-import numpy as np
 import pandas as pd
-from scipy.optimize import curve_fit, leastsq
 
 def create_connection (dbname):
     return psycopg2.connect(host="localhost",database=dbname, user="postgres", password="")
