@@ -73,12 +73,21 @@ def _insert_csv (dbname: str, fname: str, rowsize: int) -> None:
 
     # clean the data of nulls
     content = ""
-    with open(fname, encoding='utf-8-sig',  errors="backslashreplace") as csvfile:
-        while True:
-            line = csvfile.readline().replace('\000', '')
-            content += line 
-            if not line:
-                break
+
+    # open file based on compressed or not
+    if fname.find('gz') == -1:
+        print ("OPENING plain file")
+        csvfile = open(fname, mode='rt', encoding='utf-8-sig', errors="backslashreplace") 
+    else:
+        import gzip
+        print ("OPENING gzipped CSV file")
+        csvfile = gzip.open(fname, mode='rt', encoding='utf-8-sig', errors="backslashreplace") 
+
+    while True:
+        line = csvfile.readline().replace('\000', '')
+        content += line 
+        if not line:
+            break
 
     parse_content = StringIO(content)
 
