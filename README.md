@@ -25,6 +25,6 @@ up and running before doing anything else. Once it is up, create the 'apps' data
 > psql -d apps -f create_software_views.psql 
 
 # Now you are ready for running the analysis. Open the <foobar> notebook using jupyter
-> jupyter notebook notebooks/<foobar>.ipynb 
+> jupyter notebook notebooks/App-Analysis-IBM.ipynb 
 ```
 
