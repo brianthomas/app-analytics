@@ -90,3 +90,17 @@ class HistoQuery:
     def __init__(self, conn, tablename, column, constraint=""):
         self._result = HistoQuery._do_query(conn, tablename, column, constraint)
 
+
+class CountQuery:
+
+    @property
+    def result (self):
+        return self._result
+
+    @staticmethod
+    def _do_query (conn, tablename, constraint):
+        query_str = f"""SELECT count(*) as num FROM {tablename} {constraint};"""
+        return pd.read_sql_query(query_str, conn)
+
+    def __init__(self, conn, tablename, constraint=""):
+        self._result = Query._do_query(conn, tablename, constraint)
