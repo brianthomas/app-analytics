@@ -98,9 +98,13 @@ class CountQuery:
         return self._result
 
     @staticmethod
-    def _do_query (conn, tablename, constraint):
-        query_str = f"""SELECT count(*) as num FROM {tablename} {constraint};"""
+    def _do_query (conn, tablename, constraint, distinct=None):
+        if distinct != None:
+            query_str = f"""SELECT count(distinct {distinct}) as num FROM {tablename} {constraint};"""
+        else:
+            query_str = f"""SELECT count(*) as num FROM {tablename} {constraint};"""
         return pd.read_sql_query(query_str, conn)
 
-    def __init__(self, conn, tablename, constraint=""):
-        self._result = Query._do_query(conn, tablename, constraint)
+    def __init__(self, conn, tablename, constraint="", distinct=None):
+        self._result = CountQuery._do_query(conn, tablename, constraint, distinct)
+
