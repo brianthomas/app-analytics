@@ -1,5 +1,6 @@
 .~*
 .scrapecache/*
+*.tex
 *.pyc
 *.log
 *.json
