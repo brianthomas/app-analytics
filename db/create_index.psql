@@ -2,5 +2,16 @@
 -- do this after loading data
 --
 
-create index software_name_software_map_idx on software_map (software_name);
-create index install_loc_software_map_idx on software_map (install_location);
+-- create index software_name_software_map_idx on software_map (software_name);
+-- create index install_loc_software_map_idx on software_map (install_location);
+
+CREATE EXTENSION pg_trgm;
+
+update pg_opclass set opcdefault = true where opcname='gin_trgm_ops';
+
+-- drop index software_name_rdbs_data_idx;
+CREATE INDEX software_name_rdbs_data_idx ON rdbs_data USING gin (software_name);
+
+-- drop index install_loc_rdbs_data_idx;
+CREATE INDEX install_loc_rdbs_data_idx ON rdbs_data USING gin (install_location);
+
