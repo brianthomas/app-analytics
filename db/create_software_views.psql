@@ -46,3 +46,10 @@ create view device_software AS
       adsc.center_id = cntr.rowid
 ;
 
+
+-- OK, not a view, but speeds queries
+-- build a filtered table of software for faster queries
+-- this should be done programatically in the future.
+
+select software_name, install_location into table rdbs_data from software_map where software_name not ilike '%install%' and software_name not ilike '%uninstall%' and software_name not ilike '%ODBC%' and software_name not ilike '%JDBC%' and software_name not ilike '%update%' and software_name not ilike '%document%' and software_name not ilike '%client%' and software_name not ilike '%driver%' and software_name not ilike '%adapter%' and software_name not ilike '%tools%' and software_name not ilike '%toolkit%' and software_name not ilike '%upgrade%' and software_name not ilike '%utility%' and software_name not ilike '%utilities%' and software_name not ilike '%browser%' and software_name not like '%TOAD%';
+
