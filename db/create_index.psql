@@ -1,0 +1,6 @@
+
+-- do this after loading data
+--
+
+create index software_name_software_map_idx on software_map (software_name);
+create index install_loc_software_map_idx on software_map (install_location);
