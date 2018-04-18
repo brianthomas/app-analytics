@@ -149,6 +149,7 @@ def db_filter_constraint (db_software):
     db_no_percent_name = db_software.replace('%','')
     db_constraint = f"""where (software_name ilike '{db_software}' or install_location ilike '%{db_no_percent_name}%')"""
 
+    '''
     for term in DB_CONSTRAINT_TERMS_Caseless:
         db_constraint += f""" and software_name not ilike '%{term}%'"""
         # db_constraint += f""" and install_location not ilike '%{term}%'"""
@@ -156,6 +157,7 @@ def db_filter_constraint (db_software):
     for term in DB_CONSTRAINT_TERMS:
         # db_constraint += f""" and install_location not like '%{term}%'"""
         db_constraint += f""" and software_name not like '%{term}%'"""
+    '''
 
     if db_software in DB_SPECIFIC_CONSTRAINT_TERMS:
         for term in DB_SPECIFIC_CONSTRAINT_TERMS[db_software]:
@@ -169,14 +171,14 @@ def db_filter_constraint (db_software):
 def db_software (software, conn):
     ''' Simple program to automate software searches '''
     
-    return Query (conn, 'software_map', db_filter_constraint(software)).result
+    return Query (conn, 'rdbs_data', db_filter_constraint(software)).result
         
 def db_software_histo (software, conn):
     '''Program to provide breakdown of types of software '''
 
-    return HistoQuery(conn, 'software_map', 'software_name', db_filter_constraint(software)).result 
+    return HistoQuery(conn, 'rdbs_data', 'software_name', db_filter_constraint(software)).result 
         
-def db_software_count (conn, software, table='software_map', distinct=None):
+def db_software_count (conn, software, table='rdbs_data', distinct=None):
     '''Determine count of matching software'''
     
     return CountQuery (conn, table, db_filter_constraint(software), distinct).result
@@ -194,6 +196,6 @@ def count_rdbs_installs(conn):
     
     data = []
     for db_software in RELATIONAL_DB_LIST:
-        data.append(pd.DataFrame.from_dict({'software_name': db_software.replace('%',''), 'num_installs' : db_software_count(conn, db_software, table='device_software')['num']}))
+        data.append(pd.DataFrame.from_dict({'software_name': db_software.replace('%',''), 'num_installs' : db_software_count(conn, db_software, table='device_rdbs_basic')['num']}))
         
     return pd.concat(data).sort_values(['num_installs'], ascending=False)
