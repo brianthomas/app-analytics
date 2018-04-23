@@ -1,9 +1,10 @@
 # Applications Program Analytics Project - Software Installed 
+# 
 
 ## About
 This project is an investigation of NASA Applications using data harvested from Bigfix database using Web reports interface.
 
-All analysis code sits in notebooks directory. 
+All analysis code sits in notebooks directory.  There are various notebooks in this project.
 
 ## Install
 
