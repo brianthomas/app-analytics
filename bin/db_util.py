@@ -11,6 +11,12 @@ RDBS_DATA_TABLE = 'rdbs_data'
 %Microsoft SQL Server Express Edition%
 '''
 
+FOO_RELATIONAL_DB_LIST_STR = """%4th Dimension%
+%Adabas D%
+Microsoft SQL Server%
+Microsoft SQL Server% CTP%
+%Derby%""" 
+
 RELATIONAL_DB_LIST_STR = """%4th Dimension%
 %Adabas D%
 %Alpha Five%
@@ -66,9 +72,9 @@ DB2 %
 Microsoft Access%
 %Microsoft Jet Database Engine%
 Microsoft SQL Server%
-Microsoft SQL Server% CTP% 
-Microsoft SQL Server% R2% 
-Microsoft SQL Server% RC% 
+Microsoft SQL Server% CTP%
+Microsoft SQL Server% R2%
+Microsoft SQL Server% RC%
 Microsoft SQL Server% LocalDB%
 Microsoft SQL Server% Compact%
 Microsoft SQL Server Desktop%
@@ -171,7 +177,9 @@ def db_filter_constraint (db_software, webreport_constraints=True):
         install_location_match = db_software
         if install_location_match[0] != '%':
             install_location_match = '%' + install_location_match
-        db_constraint = f"""where (software_name ilike '{db_software}' or install_location ilike '%{install_location_match}%')"""
+        if install_location_match[len(install_location_match)-1] != '%':
+            install_location_match = install_location_match + '%'
+        db_constraint = f"""where (software_name ilike '{db_software}' or install_location ilike '{install_location_match}')"""
     else:
         db_constraint = f"""where software_name ilike '{db_software}'"""
 
@@ -197,6 +205,11 @@ def db_software (software, conn, table=RDBS_DATA_TABLE):
     return Query (conn, table, db_filter_constraint(software, webreport_constraints=table == RDBS_DATA_TABLE)).result
         
 def db_software_histo (software, conn, table=RDBS_DATA_TABLE):
+    '''Program to provide breakdown of installed software '''
+
+    return HistoQuery(conn, table, 'software_name', db_filter_constraint(software, webreport_constraints=table == RDBS_DATA_TABLE)).result 
+
+def db_software_types_histo (software, conn, table=RDBS_DATA_TABLE):
     '''Program to provide breakdown of types of software '''
 
     return HistoQuery(conn, table, 'software_name', db_filter_constraint(software, webreport_constraints=table == RDBS_DATA_TABLE)).result 
