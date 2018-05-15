@@ -38,6 +38,7 @@ Aster Data%
 %eXtremeDB%
 FileMaker Pro%
 %Firebird SQL Server%
+Firebird%
 %FrontBase%
 %Google Fusion Tables%
 %Fusion Tables%
@@ -65,6 +66,12 @@ DB2 %
 Microsoft Access%
 %Microsoft Jet Database Engine%
 Microsoft SQL Server%
+Microsoft SQL Server% CTP% 
+Microsoft SQL Server% R2% 
+Microsoft SQL Server% RC% 
+Microsoft SQL Server% LocalDB%
+Microsoft SQL Server% Compact%
+Microsoft SQL Server Desktop%
 %SQL Azure%
 %Cloud SQL Server%
 %Microsoft Visual FoxPro%
@@ -130,8 +137,20 @@ RELATIONAL_DB_LIST = RELATIONAL_DB_LIST_STR.split('\n')
 DB_CONSTRAINT_TERMS_Caseless = ['install', 'uninstall', 'ODBC', 'JDBC', 'update', 'document', 'client', 'driver', 'adapter', 'tools', 'toolkit', 'upgrade', 'utility', 'utilities', 'browser']
 DB_CONSTRAINT_TERMS = ['TOAD', 'Console', '.app ', 'Setup']
 
+# applies to ALL MS SQL Server types
+MS_SQL_Server_General = ['Analysis Service', 'Common Files', 'Engine Service', 'Integration Service', 'Notification Service', 'Reporting Service', 'Replication% Agent', 'Best Practices Analyzer', 'Management Studio', 'Master Data Service', 'Migration', 'PowerPivot', 'BI Development Studio', 'Registry Rebuild', 'Service Manager', 'VSS Writer', 'Management Objects', 'Language Service', 'Policies', 'Analysis Management', 'Dashboard', 'App Framework', 'Application Framework', 'Backward compatibility', 'OData', 'Publishing Wizard', 'ScriptDom', 'Addin for SharePoint', 'Add-in for SharePoint', 'Compiler Service', 'System CLR Types', 'Report Builder', 'Prerequisites', 'SQLXML4', 'ADOMD.NET', 'Data-Tier App', 'Design', 'Agent', 'Books', 'Remote BLOB Store', 'BPA', 'Software Development Kit' ]
+
+DB_Test_Release_Versions = [' CTP', ' RC', ' R2'] 
+DB_Special_Release_Versions = ['LocalDB', 'Compact', 'Server Desktop'] 
+
 DB_SPECIFIC_CONSTRAINT_TERMS = { 
-   'Microsoft SQL Server%' : ['Analysis Service', 'Common Files', 'Engine Service', 'Integration Service', 'Notification Service', 'Reporting Service', 'Replication% Agent', 'Best Practices Analyzer', 'Management Studio', 'Master Data Service', 'Migration', 'PowerPivot', 'BI Development Studio', 'Registry Rebuild', 'Service Manager', 'VSS Writer', 'Management Objects', 'Language Service', 'Policies', 'Analysis Management', 'Dashboard', 'App Framework', 'Application Framework', 'Backward compatibility', 'OData', 'Publishing Wizard', 'ScriptDom', 'Addin for SharePoint', 'Add-in for SharePoint', 'Compiler Service', 'System CLR Types', 'Report Builder', 'Prerequisites', 'SQLXML4', 'ADOMD.NET', 'Data-Tier App', 'Design', 'Agent', 'Books', 'Remote BLOB Store', 'BPA' ], 
+   'Microsoft SQL Server%' : MS_SQL_Server_General + ['Compact', 'Server Desktop', 'LocalDB', 'CTP', 'RC', 'R2'], 
+   'Microsoft SQL Server% R2%' : MS_SQL_Server_General + DB_Special_Release_Versions, 
+   'Microsoft SQL Server% CTP%' : MS_SQL_Server_General + DB_Special_Release_Versions,
+   'Microsoft SQL Server% RC%' : MS_SQL_Server_General + DB_Special_Release_Versions, 
+   'Microsoft SQL Server% LocalDB%' : MS_SQL_Server_General + DB_Test_Release_Versions, 
+   'Microsoft SQL Server% Compact%' : MS_SQL_Server_General + DB_Test_Release_Versions,
+   'Microsoft SQL Server Desktop%' : MS_SQL_Server_General + DB_Test_Release_Versions,
    'Microsoft Access%' : ['Control Panel', 'Database Packer'], 
    'SQL Anywhere%' : ['Studio', 'Sybase', 'SAP'], 
    '%dBase %' : ['QuickReport', 'mold', 'Audbase' ], 
@@ -148,8 +167,11 @@ DB_SPECIFIC_CONSTRAINT_TERMS = {
 def db_filter_constraint (db_software, webreport_constraints=True):
 
     if webreport_constraints: 
-        db_no_percent_name = db_software.replace('%','')
-        db_constraint = f"""where (software_name ilike '{db_software}' or install_location ilike '%{db_no_percent_name}%')"""
+        # we need to search for the pattern within install_location
+        install_location_match = db_software
+        if install_location_match[0] != '%':
+            install_location_match = '%' + install_location_match
+        db_constraint = f"""where (software_name ilike '{db_software}' or install_location ilike '%{install_location_match}%')"""
     else:
         db_constraint = f"""where software_name ilike '{db_software}'"""
 
