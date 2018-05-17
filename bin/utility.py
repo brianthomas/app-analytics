@@ -61,6 +61,16 @@ def create_os_bin_map(dbname):
 
     return os_name_map
 
+def read_file_list (fname):
+
+    data = []
+    with open(fname, 'r') as file:
+       for line in file.readlines(): 
+           if not line.startswith("#"):
+               data.append(line.strip())
+
+    return data
+
 class Query:
 
     @property
@@ -83,12 +93,16 @@ class HistoQuery:
         return self._result
 
     @staticmethod
-    def _do_query (conn, tablename, column, constraint):
-        query_str = f"""SELECT {column}, count(*) as num FROM {tablename} {constraint} group by {column} order by num desc;"""
+    def _do_query (conn, tablename, column, constraint, use_distinct=False):
+
+        if use_distinct: 
+            query_str = f"""SELECT distinct {column}, count(*) as num FROM {tablename} {constraint} group by {column} order by num desc;"""
+        else:
+            query_str = f"""SELECT {column}, count(*) as num FROM {tablename} {constraint} group by {column} order by num desc;"""
         return pd.read_sql_query(query_str, conn)
 
-    def __init__(self, conn, tablename, column, constraint=""):
-        self._result = HistoQuery._do_query(conn, tablename, column, constraint)
+    def __init__(self, conn, tablename, column, constraint="", use_distinct=False):
+        self._result = HistoQuery._do_query(conn, tablename, column, constraint, use_distinct)
 
 
 class CountQuery:
