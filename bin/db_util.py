@@ -3,6 +3,7 @@ import pandas as pd
 from utility import *
 
 RDBS_DATA_TABLE = 'rdbs_data'
+DEVICE_DATA_TABLE = 'device_rdbs_basic'
 
 # relational DB list from wikipedia
 # list of db software to search for
@@ -11,12 +12,7 @@ RDBS_DATA_TABLE = 'rdbs_data'
 %Microsoft SQL Server Express Edition%
 '''
 
-FOO_RELATIONAL_DB_LIST_STR = """%4th Dimension%
-%Adabas D%
-Microsoft SQL Server%
-Microsoft SQL Server% CTP%
-%Derby%""" 
-
+# taken from Wikapedia page on RDBMS
 RELATIONAL_DB_LIST_STR = """%4th Dimension%
 %Adabas D%
 %Alpha Five%
@@ -204,34 +200,34 @@ def db_software (software, conn, table=RDBS_DATA_TABLE):
     
     return Query (conn, table, db_filter_constraint(software, webreport_constraints=table == RDBS_DATA_TABLE)).result
         
-def db_software_histo (software, conn, table=RDBS_DATA_TABLE):
+def db_software_histo (software, conn, table=DEVICE_DATA_TABLE, use_distinct=False):
     '''Program to provide breakdown of installed software '''
 
-    return HistoQuery(conn, table, 'software_name', db_filter_constraint(software, webreport_constraints=table == RDBS_DATA_TABLE)).result 
+    return db_software_types_histo(software, conn, table, use_distinct)
 
-def db_software_types_histo (software, conn, table=RDBS_DATA_TABLE):
+def db_software_types_histo (software, conn, table=RDBS_DATA_TABLE, use_distinct=False):
     '''Program to provide breakdown of types of software '''
 
-    return HistoQuery(conn, table, 'software_name', db_filter_constraint(software, webreport_constraints=table == RDBS_DATA_TABLE)).result 
+    return HistoQuery(conn, table, 'software_name', db_filter_constraint(software, webreport_constraints=table == RDBS_DATA_TABLE), use_distinct=use_distinct).result 
         
 def db_software_count (conn, software, table=RDBS_DATA_TABLE, distinct=None):
     '''Determine count of matching software'''
     
     return CountQuery (conn, table, db_filter_constraint(software, webreport_constraints=table == RDBS_DATA_TABLE), distinct).result
 
-def count_rdbs_types(conn, table=RDBS_DATA_TABLE):
+def count_rdbs_types(conn, table=RDBS_DATA_TABLE, db_list=RELATIONAL_DB_LIST):
     '''Count out all of the db software we can find'''
     
     data = []
-    for db_software in RELATIONAL_DB_LIST:
+    for db_software in db_list:
         data.append(pd.DataFrame.from_dict({'software_name': db_software.replace('%',''), 'num_types' : db_software_count(conn, db_software, table=table, distinct='software_name')['num']}))
     
     return pd.concat(data).sort_values(['num_types'], ascending=False)
     
-def count_rdbs_installs(conn, table='device_rdbs_basic'):
+def count_rdbs_installs(conn, table=DEVICE_DATA_TABLE, db_list=RELATIONAL_DB_LIST):
     
     data = []
-    for db_software in RELATIONAL_DB_LIST:
+    for db_software in db_list:
         data.append(pd.DataFrame.from_dict({'software_name': db_software.replace('%',''), 'num_installs' : db_software_count(conn, db_software, table=table)['num']}))
         
     return pd.concat(data).sort_values(['num_installs'], ascending=False)
