@@ -153,7 +153,7 @@ DB_SPECIFIC_CONSTRAINT_TERMS = {
    'Microsoft SQL Server% LocalDB%' : MS_SQL_Server_General + DB_Test_Release_Versions, 
    'Microsoft SQL Server% Compact%' : MS_SQL_Server_General + DB_Test_Release_Versions,
    'Microsoft SQL Server Desktop%' : MS_SQL_Server_General + DB_Test_Release_Versions,
-   'Microsoft Access%' : ['Control Panel', 'Database Packer'], 
+   'Microsoft Access%' : ['Control Panel', 'Database Packer', 'Toolkit'], 
    'SQL Anywhere%' : ['Studio', 'Sybase', 'SAP'], 
    '%dBase %' : ['QuickReport', 'mold', 'Audbase' ], 
    '%Microsoft Visual FoxPro%' : ['Sedna'], 
@@ -224,10 +224,10 @@ def count_rdbs_types(conn, table=RDBS_DATA_TABLE, db_list=RELATIONAL_DB_LIST):
     
     return pd.concat(data).sort_values(['num_types'], ascending=False)
     
-def count_rdbs_installs(conn, table=DEVICE_DATA_TABLE, db_list=RELATIONAL_DB_LIST):
+def count_rdbs_installs(conn, table=DEVICE_DATA_TABLE, db_list=RELATIONAL_DB_LIST, distinct_devices=True):
     
     data = []
     for db_software in db_list:
-        data.append(pd.DataFrame.from_dict({'software_name': db_software.replace('%',''), 'num_installs' : db_software_count(conn, db_software, table=table)['num']}))
+        data.append(pd.DataFrame.from_dict({'software_name': db_software.replace('%',''), 'num_installs' : db_software_count(conn, db_software, table=table, distinct='device_name')['num']}))
         
     return pd.concat(data).sort_values(['num_installs'], ascending=False)
