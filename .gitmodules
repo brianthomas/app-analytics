@@ -1,0 +1,3 @@
+[submodule "utilities"]
+	path = lib
+	url = https://233ed7d010634777e794846a4a357420794a68de:x-oauth-basic@developer.nasa.gov/DataSquad/app-analytics-utilities.git
