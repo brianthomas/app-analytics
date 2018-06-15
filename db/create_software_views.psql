@@ -13,7 +13,7 @@ create view devices AS
 
 -- this view doesnt make all of the possible joins, just a basic join
 -- between software and devices
-drop view if exists device_software_basic;
+drop view if exists device_software_basic cascade;
 create view device_software_basic AS
     select ds.*, s.software_name, s.install_location from
        ( select d.rowid as device_id, d.*, a.software_id from
@@ -47,9 +47,39 @@ create view device_software AS
 ;
 
 
--- OK, not a view, but speeds queries
+-- OK, these are not a views, but speeds queries
 -- build a filtered table of software for faster queries
 -- this should be done programatically in the future.
+
+drop table if exists bi_data cascade;
+select rowid, software_name, install_location into table bi_data from software_map where software_name not ilike '%install%' and software_name not ilike '%uninstall%' and software_name not ilike '%update%' and software_name not like '%.app %'and software_name not like '%Setup%';
+
+
+drop view if exists device_bi_basic;
+create view device_bi_basic AS
+     select ds.*, s.software_name, s.install_location from
+        ( select d.rowid as device_id, d.*, a.software_id from
+           (select DISTINCT * from device_software_assoc) as a
+            inner join
+           (select * from device_map ) as d
+            on
+           a.device_id = d.rowid
+        ) as ds
+         inner join
+        (select * from bi_data ) as s
+         on
+        ds.software_id = s.rowid
+;
+
+drop view if exists device_bi;
+create view device_bi AS
+     select dbi.*, os.os_name from
+        ( select * from device_bi_basic) as dbi
+         inner join
+        (select * from os_map) as os
+         on
+        dbi.os_id = os.rowid
+;
 
 drop table if exists rdbs_data cascade;
 select rowid, software_name, install_location into table rdbs_data from software_map where software_name not ilike '%install%' and software_name not ilike '%uninstall%' and software_name not ilike '%ODBC%' and software_name not ilike '%JDBC%' and software_name not ilike '%update%' and software_name not ilike '%document%' and software_name not ilike '%client%' and software_name not ilike '%driver%' and software_name not ilike '%adapter%' and software_name not ilike '%tools%' and software_name not ilike '%toolkit%' and software_name not ilike '%upgrade%' and software_name not ilike '%utility%' and software_name not ilike '%utilities%' and software_name not ilike '%browser%' and software_name not like '%TOAD%' and software_name not like '%.app %' and software_name not like '%Console%' and software_name not like '%Setup%';
@@ -69,4 +99,7 @@ create view device_rdbs_basic AS
          on
         ds.software_id = s.rowid
 ;
+
+
+
 
