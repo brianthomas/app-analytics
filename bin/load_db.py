@@ -29,6 +29,18 @@ COL_REPLACE = {
                    # 'Is Machine Internet Accessible': 'internet_accessible'
               }
 
+# various formats of OS software packages which appear psuedo randomly
+# in "Installed Applications" columns of CSV
+WIN_INSTALL_APP_FORMAT = "DisplayName • DisplayVersion • Publisher • InstallDate • InstallLocation • URLInfoAbout"
+MACOS_INSTALL_APP_FORMAT = "DisplayName • DisplayVersion • CreationTime • InstallLocation"
+LINUX_INSTALL_APP_FORMAT = "PackageName • PackageVersion • Architecture"
+
+LINUX_INSTALL_APP_COL = None
+MACOS_INSTALL_APP_COL = None
+WINDOWS_INSTALL_APP_COL = None
+
+INSTALL_APP_COL_NAMES = ['Installed Applications', 'Installed Applications.1', 'Installed Applications.2']
+
 def _create_connection (dbname: str) -> psycopg2.extensions.connection:
     ''' open connection to local postgresql server instance '''
     return psycopg2.connect(host="localhost",database=dbname, user="postgres", password="")
@@ -237,49 +249,96 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
     LOG.debug("  Cols : "+ str(df.columns.values.tolist()))
     LOG.info("  Cols : "+ str(df.dtypes))
 
-    # Header of parsed file
-    # Computer Name,User Name,Device Type,Number of Processor Cores - Windows,Number of Processor Cores - Mac OS X,Installed Applications,Installed Applications.1,HomeCenter,IP Address,OS,CPU,Last Report Time
+    # The Header of parsed file
+    #
+    # Header *should* look like this
+    # Computer Name,Number of Processor Cores - Linux,Installed Applications,Number of Processor Cores - Windows,Number of Processor Cores - Mac OS X,Installed Applications.1,HomeCenter,Installed Applications.2,Device Type,IP Address,OS,CPU,Last Report Time
+    # 
+    # IF it doesnt (because of missing "Installed Applications" we need to fix that up front)
+
+    if not 'Installed Applications.2' in df.columns: 
+        raise Exception("Fatal Parsing Error: duplicate or missing Installed Applications columns. Installed Applications.2 column required.")
 
     special_delim_char = '•';
 
-    # print(df['Installed Applications'])
+    LINUX_INSTALL_APP_COL = None
+    MACOS_INSTALL_APP_COL = None
+    WINDOWS_INSTALL_APP_COL = None
 
     # find which data are Windows, which are Mac OS
     # and set the installed app columns appropriately
     #
-    if "DisplayName • DisplayVersion • Publisher • InstallDate • InstallLocation • URLInfoAbout" in df['Installed Applications']:
-        windows_install_app_col = 'Installed Applications' 
-        macos_install_app_col = 'Installed Applications.1' 
-    else:
-        windows_install_app_col = 'Installed Applications.1' 
-        macos_install_app_col = 'Installed Applications' 
+    
+    if LINUX_INSTALL_APP_COL is None or MACOS_INSTALL_APP_COL is None or WINDOWS_INSTALL_APP_COL is None:
+        # we need to set one or more of these columns
+        print ("TRYING TO SET INSTALL APP COL")
+        for install_col_name in INSTALL_APP_COL_NAMES:
+            # print(df[install_col_name])
+            if WINDOWS_INSTALL_APP_COL is None and df[install_col_name].isin([WIN_INSTALL_APP_FORMAT]).any():
+                WINDOWS_INSTALL_APP_COL = install_col_name
+                print ("SET WIN to "+install_col_name)
+            elif MACOS_INSTALL_APP_COL is None and df[install_col_name].isin([MACOS_INSTALL_APP_FORMAT]).any():
+                MACOS_INSTALL_APP_COL = install_col_name
+                print ("SET MACOS to "+install_col_name)
+            elif LINUX_INSTALL_APP_COL is None and df[install_col_name].isin([LINUX_INSTALL_APP_FORMAT]).any():
+                LINUX_INSTALL_APP_COL = install_col_name
+                print ("SET LINUX to "+install_col_name)
+            else:
+                # cant set it. Thats OK as the OS may not exist in this parsed chunk
+                pass
 
     LOG.info("Drop out cut in head rows")
     # drop out crap rows (essentially are cut in headers) which are not used/contain no data of use 
-    df = df[df[windows_install_app_col] != "DisplayName • DisplayVersion • Publisher • InstallDate • InstallLocation • URLInfoAbout"] 
-    df = df[df[macos_install_app_col] != "DisplayName • DisplayVersion • CreationTime • InstallLocation"] 
+    if WINDOWS_INSTALL_APP_COL != None:
+        df = df[df[WINDOWS_INSTALL_APP_COL] != WIN_INSTALL_APP_FORMAT]
+    if MACOS_INSTALL_APP_COL != None:
+        df = df[df[MACOS_INSTALL_APP_COL] != MACOS_INSTALL_APP_FORMAT]
+    if LINUX_INSTALL_APP_COL != None:
+        df = df[df[LINUX_INSTALL_APP_COL] != LINUX_INSTALL_APP_FORMAT]
 
-    LOG.info("Split dataframe into windows and macosx")
+    LOG.info("Split dataframe into windows, linux and macosx")
     # split out the Processor Cores column
     win_df = None 
     macos_df = None
+    linux_df = None
+    lin_macos_df = None
+
+    # split windows from linux and mac
     try:
         # print(df)
-        win_df, macos_df = [x for _, x in df.groupby(df['Number of Processor Cores - Windows'] == '<not reported>')]
+        win_df, lin_macos_df = [x for _, x in df.groupby(df['Number of Processor Cores - Windows'] == '<not reported>')]
 
     except ValueError: 
 
-        LOG.debug("Got ValueError on Split, no win or mac machines?")
+        LOG.debug("Got ValueError on Split, no win or mac/linux machines?")
         # there are no windows or MacOS machines in the dataset, filter for which
         check = df['Number of Processor Cores - Windows']
         if len(check == '<not reported>') > 0:
             # its macos
             win_df = None
-            macos_df = df
+            lin_macos_df = df
         else:
             # its windows
             win_df = df
+            lin_macos_df = None
+
+    # split linux from macos
+    try:
+        macos_df, linux_df = [x for _, x in lin_macos_df.groupby(df['Number of Processor Cores - Mac OS X'] == '<not reported>')]
+
+    except ValueError:
+
+        LOG.debug("Got ValueError on Split, no linux or mac machines?")
+        # there are no windows or MacOS machines in the dataset, filter for which
+        check = df['Number of Processor Cores - Mac OS X']
+        if len(check == '<not reported>') > 0:
+            # its linux
             macos_df = None
+            linux_df = df
+        else:
+            # its macos
+            macos_df = df
+            linux_df = None
 
     # Now, depending on column split out the Installed Applications columns into set of cols w/ no nulls
 
@@ -288,11 +347,12 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
         # parse out installed apps : 
         #     DisplayName • DisplayVersion • Publisher • InstallDate • InstallLocation • URLInfoAbout
 
-        LOG.info("Parse windows installed apps using column: "+windows_install_app_col)
+        LOG.info("Parse windows installed apps using column: "+str(WINDOWS_INSTALL_APP_COL))
 
-        new_win_df = win_df.join( win_df[windows_install_app_col].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Publisher', 3:'Install Date', 4:'Install Location', 5:'URL'})) 
+        new_win_df = win_df.join( win_df[WINDOWS_INSTALL_APP_COL].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Publisher', 3:'Install Date', 4:'Install Location', 5:'URL'})) 
+        new_win_df.drop(['Number of Processor Cores - Linux'], axis=1, inplace=True)
         new_win_df.drop(['Number of Processor Cores - Mac OS X'], axis=1, inplace=True)
-        new_win_df.drop(['Installed Applications', 'Installed Applications.1'], axis=1, inplace=True)
+        new_win_df.drop(['Installed Applications', 'Installed Applications.1', 'Installed Applications.2'], axis=1, inplace=True)
         new_win_df.rename(index=str, columns={"Number of Processor Cores - Windows": "CPUS"}, inplace=True)
 
         # print (new_win_df)
@@ -304,21 +364,51 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
 
         LOG.info("Parse macos installed apps")
 
-        new_macos_df = macos_df.join(macos_df[macos_install_app_col].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Install Date', 3:'Install Location'})) 
+        new_macos_df = macos_df.join(macos_df[MACOS_INSTALL_APP_COL].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Install Date', 3:'Install Location'})) 
         new_macos_df.drop(['Number of Processor Cores - Windows'], axis=1, inplace=True)
-        new_macos_df.drop(['Installed Applications', 'Installed Applications.1'], axis=1, inplace=True)
+        new_macos_df.drop(['Number of Processor Cores - Linux'], axis=1, inplace=True)
+        new_macos_df.drop(['Installed Applications', 'Installed Applications.1', 'Installed Applications.2'], axis=1, inplace=True)
         new_macos_df.rename(index=str, columns={"Number of Processor Cores - Mac OS X": "CPUS"}, inplace=True)
 
-    LOG.info("Merge back windows and macosx data frames into one")
-    if macos_df is not None and win_df is not None:
+    if linux_df is not None:
+        # Linux machines
+        # parse out installed apps :
+        #    "PackageName • PackageVersion • Architecture"
+
+        LOG.info("Parse linux installed apps")
+        try:
+            new_linux_df = linux_df.join(linux_df[LINUX_INSTALL_APP_COL].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Architecture'})) 
+        except:
+            # means that we had <not reported> for value in LINUX_INSTALL_APP_COL
+            new_linux_df = linux_df
+            new_linux_df['Software Name'] = '<not reported>' 
+            new_linux_df['Version'] = '<not reported>'
+            
+        new_linux_df.drop(['Number of Processor Cores - Windows'], axis=1, inplace=True)
+        new_linux_df.drop(['Number of Processor Cores - Mac OS X'], axis=1, inplace=True)
+        new_linux_df.drop(['Installed Applications', 'Installed Applications.1', 'Installed Applications.2'], axis=1, inplace=True)
+        new_linux_df.rename(index=str, columns={"Number of Processor Cores - Linux": "CPUS"}, inplace=True)
+
+
+    # TODO: These nested logic if/thens suck -- there is a better way 
+    LOG.info("Merge back windows, linux and macosx data frames into one")
+    if macos_df is not None and win_df is not None and linux_df is not None:
         # append them together rowwise
+        df = pd.concat([new_win_df, new_macos_df, new_linux_df])
+    elif macos_df is not None and win_df is not None and linux_df is None:
         df = pd.concat([new_win_df, new_macos_df])
+    elif macos_df is None and win_df is not None and linux_df is not None:
+        df = pd.concat([new_win_df, new_linux_df])
+    elif macos_df is not None and win_df is None and linux_df is not None:
+        df = pd.concat([new_macos_df, new_linux_df])
+    elif linux_df is not None:
+        df = new_linux_df
     elif macos_df is not None:
         df = new_macos_df
     elif win_df is not None:
         df = new_win_df
     else:
-        LOG.fatal("?? what happened NO macos or win DF data to clean...error!")
+        LOG.fatal("?? what happened NO macos, linux or win DF data to clean...error!")
 
     # add any missing critical columns
     for needed_column in ['Version', 'Install Location']:
