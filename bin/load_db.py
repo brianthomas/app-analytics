@@ -349,7 +349,16 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
 
         LOG.info("Parse windows installed apps using column: "+str(WINDOWS_INSTALL_APP_COL))
 
-        new_win_df = win_df.join( win_df[WINDOWS_INSTALL_APP_COL].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Publisher', 3:'Install Date', 4:'Install Location', 5:'URL'})) 
+        try:
+
+            new_win_df = win_df.join( win_df[WINDOWS_INSTALL_APP_COL].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Publisher', 3:'Install Date', 4:'Install Location', 5:'URL'})) 
+
+        except:
+            #means we had <not reported> in WINDOWS_INSTALL_APP_COL
+            new_win_df = win_df
+            new_win_df['Software Name'] = '<not reported>' 
+            new_win_df['Version'] = '<not reported>' 
+
         new_win_df.drop(['Number of Processor Cores - Linux'], axis=1, inplace=True)
         new_win_df.drop(['Number of Processor Cores - Mac OS X'], axis=1, inplace=True)
         new_win_df.drop(['Installed Applications', 'Installed Applications.1', 'Installed Applications.2'], axis=1, inplace=True)
@@ -364,7 +373,16 @@ def _clean_df (df: pd.DataFrame) -> pd.DataFrame:
 
         LOG.info("Parse macos installed apps")
 
-        new_macos_df = macos_df.join(macos_df[MACOS_INSTALL_APP_COL].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Install Date', 3:'Install Location'})) 
+        try:
+
+            new_macos_df = macos_df.join(macos_df[MACOS_INSTALL_APP_COL].str.split('•', expand=True).rename(columns={0:'Software Name', 1:'Version', 2:'Install Date', 3:'Install Location'})) 
+
+        except:
+            # means we had <not reported> in MACOS_INSTALL_APP_COL
+            new_macos_df = macos_df
+            new_macos_df['Software Name'] = '<not reported>' 
+            new_macos_df['Version'] = '<not reported>' 
+
         new_macos_df.drop(['Number of Processor Cores - Windows'], axis=1, inplace=True)
         new_macos_df.drop(['Number of Processor Cores - Linux'], axis=1, inplace=True)
         new_macos_df.drop(['Installed Applications', 'Installed Applications.1', 'Installed Applications.2'], axis=1, inplace=True)
