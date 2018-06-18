@@ -9,9 +9,14 @@ CREATE EXTENSION pg_trgm;
 
 update pg_opclass set opcdefault = true where opcname='gin_trgm_ops';
 
--- drop index software_name_rdbs_data_idx;
+drop index software_name_rdbs_data_idx;
 CREATE INDEX software_name_rdbs_data_idx ON rdbs_data USING gin (software_name);
 
--- drop index install_loc_rdbs_data_idx;
+drop index install_loc_rdbs_data_idx;
 CREATE INDEX install_loc_rdbs_data_idx ON rdbs_data USING gin (install_location);
 
+drop index software_name_bi_data_idx;
+CREATE INDEX software_name_bi_data_idx ON bi_data USING gin (software_name);
+
+drop index install_loc_bi_data_idx;
+CREATE INDEX install_loc_bi_data_idx ON bi_data USING gin (install_location);
